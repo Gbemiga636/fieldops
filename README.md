@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FieldOps
 
-## Getting Started
+Real-time field agent location tracking platform built for MultiChoice operations teams.
 
-First, run the development server:
+## Features
+
+### For Field Agents
+- One-tap live location sharing via GPS
+- Name saved locally — return and share instantly
+- Continuous live tracking mode
+- Automatic capture of timestamp, coordinates, accuracy, address, device & browser
+
+### For Admins
+- Secure login (username: `oluwaseyi`, password set on first visit)
+- Password setup modal with "Remind Me Later" option
+- Real-time dashboard with live Supabase updates
+- Search by agent name or location
+- Filter by date range and status
+- List and map views
+- Delete records
+- Export to CSV
+- Stats: total shares, today, unique agents, active now
+
+## Setup
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure Supabase
+
+1. Create a project at [supabase.com](https://supabase.com)
+2. Copy `.env.local.example` to `.env.local`
+3. Fill in your Supabase URL and keys
+4. Run the SQL in `supabase/schema.sql` in the Supabase SQL Editor
+
+### 3. Environment variables
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+JWT_SECRET=your-random-secret-string
+```
+
+### 4. Run locally
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Home:** http://localhost:3000
+- **Agent share link:** http://localhost:3000/share
+- **Admin login:** http://localhost:3000/admin/login
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Admin Login
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Username: `oluwaseyi`
+- On first login, you'll be prompted to set a password
+- You can choose "Remind Me Later" to skip temporarily
+- Once set, use that password for all future logins
 
-## Learn More
+## Tech Stack
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Next.js 16 (App Router)
+- TypeScript
+- Tailwind CSS 4
+- Supabase (PostgreSQL + Realtime)
+- Framer Motion
+- Leaflet Maps
+- JWT session auth with bcrypt
