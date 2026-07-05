@@ -15,14 +15,23 @@ export default function AdminLoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [needsPassword, setNeedsPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("Signing in...");
   const [error, setError] = useState("");
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (!username.trim()) {
+      setError("Please enter your username");
+      return;
+    }
+    if (!password) {
+      setError("Please enter your password");
+      return;
+    }
+
     setLoadingMessage("Signing in...");
     setLoading(true);
 
@@ -32,7 +41,7 @@ export default function AdminLoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           username: username.trim(),
-          password: password,
+          password,
         }),
       });
 
@@ -47,41 +56,6 @@ export default function AdminLoginPage() {
       if (data.needsPasswordSetup) {
         router.push("/admin/dashboard?setup=password");
       } else {
-        router.push("/admin/dashboard");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
-      setLoading(false);
-    }
-  };
-
-  const handleUsernameSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoadingMessage("Verifying account...");
-    setLoading(true);
-
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: username.trim() }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Login failed");
-      }
-
-      if (data.needsPasswordSetup) {
-        setLoadingMessage("Opening dashboard...");
-        router.push("/admin/dashboard?setup=password");
-      } else if (data.requiresPassword) {
-        setLoading(false);
-        setNeedsPassword(true);
-      } else {
-        setLoadingMessage("Opening dashboard...");
         router.push("/admin/dashboard");
       }
     } catch (err) {
@@ -132,14 +106,11 @@ export default function AdminLoginPage() {
               </p>
             </div>
 
-            <form
-              onSubmit={needsPassword ? handleLogin : handleUsernameSubmit}
-              className="space-y-5"
-            >
+            <form onSubmit={handleSubmit} className="space-y-5">
               <motion.div
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.25 }}
+                transition={{ delay: 0.2 }}
               >
                 <label className="flex items-center gap-2 text-sm font-medium text-white/70 mb-2">
                   <User size={16} />
@@ -151,46 +122,46 @@ export default function AdminLoginPage() {
                   onChange={(e) => setUsername(e.target.value)}
                   className="field-input field-input-mobile"
                   placeholder="Enter username"
+                  autoComplete="username"
                   required
-                  disabled={needsPassword || loading}
+                  disabled={loading}
                 />
               </motion.div>
 
-              {needsPassword && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <label className="flex items-center gap-2 text-sm font-medium text-white/70 mb-2">
-                    <Lock size={16} />
-                    Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="field-input field-input-mobile pr-10"
-                      placeholder="Enter your password"
-                      required
-                      autoFocus
-                      disabled={loading}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70"
-                    >
-                      {showPassword ? (
-                        <EyeOff size={18} />
-                      ) : (
-                        <Eye size={18} />
-                      )}
-                    </button>
-                  </div>
-                </motion.div>
-              )}
+              <motion.div
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.28 }}
+              >
+                <label className="flex items-center gap-2 text-sm font-medium text-white/70 mb-2">
+                  <Lock size={16} />
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="field-input field-input-mobile pr-10"
+                    placeholder="Enter your password"
+                    autoComplete="current-password"
+                    required
+                    disabled={loading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? (
+                      <EyeOff size={18} />
+                    ) : (
+                      <Eye size={18} />
+                    )}
+                  </button>
+                </div>
+              </motion.div>
 
               {error && (
                 <motion.p
@@ -207,32 +178,19 @@ export default function AdminLoginPage() {
                 disabled={loading}
                 className="btn-primary w-full py-3.5 min-h-[48px] touch-manipulation"
                 whileTap={{ scale: 0.98 }}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35 }}
               >
                 {loading ? (
                   <>
                     <Loader2 size={18} className="animate-spin" />
                     Signing in...
                   </>
-                ) : needsPassword ? (
-                  "Sign In"
                 ) : (
-                  "Continue"
+                  "Sign In"
                 )}
               </motion.button>
-
-              {needsPassword && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNeedsPassword(false);
-                    setPassword("");
-                    setError("");
-                  }}
-                  className="btn-ghost w-full text-sm"
-                >
-                  Use different username
-                </button>
-              )}
             </form>
           </motion.div>
         </motion.div>

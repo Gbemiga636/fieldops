@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Step 1: username only — tell UI what to show next
+    // Username only (legacy) — password required if already set
     if (!password) {
       if (!admin.password_set) {
         const token = await createSession(admin.username);
@@ -38,26 +38,20 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: true,
           needsPasswordSetup: true,
-          requiresPassword: false,
-          remindLater: admin.remind_later,
         });
       }
 
-      return NextResponse.json({
-        success: true,
-        requiresPassword: true,
-        needsPasswordSetup: false,
-      });
+      return NextResponse.json(
+        { error: "Password is required" },
+        { status: 400 }
+      );
     }
-
-    // Step 2: username + password
     if (!admin.password_set) {
       const token = await createSession(admin.username);
       await setSessionCookie(token);
       return NextResponse.json({
         success: true,
         needsPasswordSetup: true,
-        requiresPassword: false,
       });
     }
 
@@ -75,7 +69,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       needsPasswordSetup: false,
-      requiresPassword: false,
     });
   } catch {
     return NextResponse.json(
