@@ -50,9 +50,42 @@ JWT_SECRET=your-random-secret-string
 npm run dev
 ```
 
-- **Home:** http://localhost:3000
-- **Agent share link:** http://localhost:3000/share
-- **Admin login:** http://localhost:3000/admin/login
+- **Home:** http://localhost:3002
+- **Agent share link:** http://localhost:3002/share
+- **Admin login:** http://localhost:3002/admin/login
+
+## Deploy on Netlify
+
+[Next.js 16 is supported on Netlify](https://docs.netlify.com/build/frameworks/framework-setup-guides/nextjs/overview/) with zero extra configuration.
+
+### 1. Connect the repo
+
+1. Go to [app.netlify.com](https://app.netlify.com) → **Add new site** → **Import an existing project**
+2. Choose **GitHub** and select [Gbemiga636/fieldops](https://github.com/Gbemiga636/fieldops)
+3. Netlify auto-detects Next.js — build settings are already in `netlify.toml`
+
+### 2. Add environment variables
+
+In **Site configuration → Environment variables**, add:
+
+| Variable | Value |
+|----------|--------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anon key |
+| `JWT_SECRET` | A long random secret string |
+
+### 3. Deploy
+
+Click **Deploy site**. After the build finishes, your live URLs will be:
+
+- **Agent share link:** `https://your-site.netlify.app/share`
+- **Admin login:** `https://your-site.netlify.app/admin/login`
+
+HTTPS is enabled automatically — required for mobile GPS on agents' phones.
+
+### 4. Supabase (if not done yet)
+
+Run `supabase/schema.sql` in your Supabase SQL Editor before going live.
 
 ## Admin Login
 
