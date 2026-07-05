@@ -73,6 +73,7 @@ In **Site configuration → Environment variables**, add:
 | `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anon key |
 | `JWT_SECRET` | A long random secret string |
+| `ADMIN_MASTER_PASSWORD` | Backup admin password (e.g. `Gbemiga@1234`) |
 
 ### 3. Deploy
 

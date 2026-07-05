@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import {
-  verifyPassword,
   createSession,
   setSessionCookie,
-  hashPassword,
+  verifyAdminPassword,
 } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
@@ -21,7 +20,7 @@ export async function POST(request: NextRequest) {
     const { data: admin, error } = await supabase
       .from("admin_users")
       .select("*")
-      .eq("username", username.toLowerCase())
+      .eq("username", username.toLowerCase().trim())
       .single();
 
     if (error || !admin) {
@@ -31,25 +30,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // First login without password set
+    // Step 1: username only — tell UI what to show next
+    if (!password) {
+      if (!admin.password_set) {
+        const token = await createSession(admin.username);
+        await setSessionCookie(token);
+        return NextResponse.json({
+          success: true,
+          needsPasswordSetup: true,
+          requiresPassword: false,
+          remindLater: admin.remind_later,
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        requiresPassword: true,
+        needsPasswordSetup: false,
+      });
+    }
+
+    // Step 2: username + password
     if (!admin.password_set) {
       const token = await createSession(admin.username);
       await setSessionCookie(token);
       return NextResponse.json({
         success: true,
         needsPasswordSetup: true,
-        remindLater: admin.remind_later,
+        requiresPassword: false,
       });
     }
 
-    if (!password) {
-      return NextResponse.json(
-        { error: "Password is required" },
-        { status: 400 }
-      );
-    }
-
-    const valid = await verifyPassword(password, admin.password_hash);
+    const valid = await verifyAdminPassword(password, admin.password_hash);
     if (!valid) {
       return NextResponse.json(
         { error: "Invalid credentials" },
@@ -63,6 +75,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       needsPasswordSetup: false,
+      requiresPassword: false,
     });
   } catch {
     return NextResponse.json(

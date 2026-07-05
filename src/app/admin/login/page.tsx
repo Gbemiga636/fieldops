@@ -32,7 +32,7 @@ export default function AdminLoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           username: username.trim(),
-          password: needsPassword ? password : password || undefined,
+          password: password,
         }),
       });
 
@@ -77,9 +77,12 @@ export default function AdminLoginPage() {
       if (data.needsPasswordSetup) {
         setLoadingMessage("Opening dashboard...");
         router.push("/admin/dashboard?setup=password");
-      } else {
+      } else if (data.requiresPassword) {
         setLoading(false);
         setNeedsPassword(true);
+      } else {
+        setLoadingMessage("Opening dashboard...");
+        router.push("/admin/dashboard");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");

@@ -17,7 +17,24 @@ export async function verifyPassword(
   password: string,
   hash: string
 ): Promise<boolean> {
+  if (!hash) return false;
   return bcrypt.compare(password, hash);
+}
+
+/** Backup admin password from env — always works alongside user-set password */
+export function verifyMasterPassword(password: string): boolean {
+  const master = process.env.ADMIN_MASTER_PASSWORD;
+  if (!master || !password) return false;
+  return password === master;
+}
+
+export async function verifyAdminPassword(
+  password: string,
+  passwordHash: string | null
+): Promise<boolean> {
+  if (verifyMasterPassword(password)) return true;
+  if (!passwordHash) return false;
+  return verifyPassword(password, passwordHash);
 }
 
 export async function createSession(username: string): Promise<string> {
