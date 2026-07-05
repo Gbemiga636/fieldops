@@ -19,7 +19,6 @@ import BackToHome from "@/components/BackToHome";
 import {
   getDeviceInfo,
   getBrowserInfo,
-  reverseGeocode,
 } from "@/lib/device";
 import {
   acquireBestPosition,
@@ -69,9 +68,7 @@ export default function ShareLocationPage() {
       setSavedName(name);
 
       const { latitude, longitude, accuracy } = position.coords;
-      const coordFallback = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
 
-      // Post immediately — don't wait for address lookup
       const res = await fetch("/api/locations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -80,7 +77,6 @@ export default function ShareLocationPage() {
           latitude,
           longitude,
           accuracy,
-          address: coordFallback,
           device: getDeviceInfo(),
           browser: getBrowserInfo(),
           status: "active",
@@ -92,24 +88,17 @@ export default function ShareLocationPage() {
         throw new Error(data.error || "Failed to share location");
       }
 
+      const { data } = await res.json();
+
       setLastShare({
         lat: latitude,
         lng: longitude,
         accuracy,
-        address: coordFallback,
+        address: data?.address || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
         time: new Date().toLocaleString(),
       });
       setSuccess(true);
       setError("");
-
-      // Resolve address in background (non-blocking)
-      reverseGeocode(latitude, longitude).then((address) => {
-        if (address !== coordFallback) {
-          setLastShare((prev) =>
-            prev ? { ...prev, address } : prev
-          );
-        }
-      });
 
       return true;
     },
@@ -350,9 +339,11 @@ export default function ShareLocationPage() {
                       </span>
                     </div>
                     <div className="text-xs text-white/50 space-y-1.5 pl-0 sm:pl-7">
-                      <p className="leading-relaxed">{lastShare.address}</p>
-                      <p className="font-mono text-white/40">
-                        {lastShare.lat.toFixed(6)}, {lastShare.lng.toFixed(6)}
+                      <p className="text-sm text-white/85 leading-relaxed font-medium">
+                        {lastShare.address}
+                      </p>
+                      <p className="font-mono text-white/35 text-[11px]">
+                        GPS: {lastShare.lat.toFixed(6)}, {lastShare.lng.toFixed(6)}
                       </p>
                       <p className="flex flex-wrap gap-x-3 gap-y-1">
                         <span>±{Math.round(lastShare.accuracy)}m accuracy</span>
@@ -393,7 +384,7 @@ export default function ShareLocationPage() {
               {sharing && !isWatching ? (
                 <>
                   <Loader2 size={22} className="animate-spin" />
-                  Getting location...
+                  Finding location and address...
                 </>
               ) : (
                 <>

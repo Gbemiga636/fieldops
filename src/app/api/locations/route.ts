@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { reverseGeocodeServer } from "@/lib/geocode";
 
 function dbErrorResponse(err: unknown) {
   const message = err instanceof Error ? err.message : "Database error";
@@ -32,7 +33,6 @@ export async function POST(request: NextRequest) {
       latitude,
       longitude,
       accuracy,
-      address,
       device,
       browser,
       status = "active",
@@ -45,21 +45,54 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data, error } = await supabase
+    // Resolve full address on server (city, state, country)
+    const geocoded = await reverseGeocodeServer(latitude, longitude);
+
+    const row: Record<string, unknown> = {
+      agent_name: agent_name.trim(),
+      latitude,
+      longitude,
+      accuracy: accuracy ?? null,
+      address: geocoded.formatted,
+      street: geocoded.street,
+      area: geocoded.area,
+      city: geocoded.city,
+      state: geocoded.state,
+      country: geocoded.country,
+      postcode: geocoded.postcode,
+      device: device ?? null,
+      browser: browser ?? null,
+      status,
+      shared_at: new Date().toISOString(),
+    };
+
+    let { data, error } = await supabase
       .from("location_shares")
-      .insert({
-        agent_name: agent_name.trim(),
-        latitude,
-        longitude,
-        accuracy: accuracy ?? null,
-        address: address ?? null,
-        device: device ?? null,
-        browser: browser ?? null,
-        status,
-        shared_at: new Date().toISOString(),
-      })
+      .insert(row)
       .select()
       .single();
+
+    // Retry with address only if extra columns not migrated yet
+    if (error) {
+      const basic = {
+        agent_name: row.agent_name,
+        latitude: row.latitude,
+        longitude: row.longitude,
+        accuracy: row.accuracy,
+        address: row.address,
+        device: row.device,
+        browser: row.browser,
+        status: row.status,
+        shared_at: row.shared_at,
+      };
+      const retry = await supabase
+        .from("location_shares")
+        .insert(basic)
+        .select()
+        .single();
+      data = retry.data;
+      error = retry.error;
+    }
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -96,7 +129,7 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       query = query.or(
-        `agent_name.ilike.%${search}%,address.ilike.%${search}%`
+        `agent_name.ilike.%${search}%,address.ilike.%${search}%,street.ilike.%${search}%,area.ilike.%${search}%,city.ilike.%${search}%,state.ilike.%${search}%,country.ilike.%${search}%`
       );
     }
     if (agent) {

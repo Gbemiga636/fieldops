@@ -20,14 +20,13 @@ import {
   ChevronDown,
   Navigation,
   Monitor,
-  Globe,
-  Crosshair,
 } from "lucide-react";
 import Logo from "@/components/Logo";
 import AnimatedBackground from "@/components/AnimatedBackground";
 import PasswordSetupModal from "@/components/PasswordSetupModal";
 import AdminHeader from "@/components/AdminHeader";
 import { supabase, type LocationShare } from "@/lib/supabase";
+import { formatLocationDisplay } from "@/lib/geocode";
 
 const MapView = dynamic(() => import("@/components/MapView"), {
   ssr: false,
@@ -147,10 +146,15 @@ function DashboardContent() {
       "Agent Name",
       "Date",
       "Time",
+      "Exact Location",
+      "Street",
+      "Area",
+      "City",
+      "State",
+      "Country",
       "Latitude",
       "Longitude",
       "Accuracy (m)",
-      "Address",
       "Device",
       "Browser",
       "Status",
@@ -161,10 +165,15 @@ function DashboardContent() {
         l.agent_name,
         format(d, "yyyy-MM-dd"),
         format(d, "HH:mm:ss"),
+        l.address ?? "",
+        l.street ?? "",
+        l.area ?? "",
+        l.city ?? "",
+        l.state ?? "",
+        l.country ?? "",
         l.latitude,
         l.longitude,
         l.accuracy ?? "",
-        l.address ?? "",
         l.device ?? "",
         l.browser ?? "",
         l.status,
@@ -445,6 +454,7 @@ function DashboardContent() {
             {locations.map((loc, i) => {
               const isRecent =
                 Date.now() - new Date(loc.shared_at).getTime() < 30 * 60 * 1000;
+              const location = formatLocationDisplay(loc);
 
               return (
                 <motion.div
@@ -481,19 +491,27 @@ function DashboardContent() {
                           )}
                         </div>
 
-                        <p className="text-sm text-white/50 truncate mb-2">
-                          <Globe size={12} className="inline mr-1 opacity-50" />
-                          {loc.address || "Address unavailable"}
-                        </p>
+                        <div className="mb-2.5">
+                          <p className="text-sm sm:text-[15px] text-white font-medium leading-relaxed">
+                            <MapPin size={14} className="inline mr-1.5 text-mc-cyan shrink-0" />
+                            {location.exact}
+                          </p>
+                          {location.locality && (
+                            <p className="text-xs text-white/45 mt-1 pl-5">
+                              {location.locality}
+                            </p>
+                          )}
+                          {location.coords && (
+                            <p className="text-[11px] text-white/30 mt-1 pl-5 font-mono">
+                              GPS: {location.coords}
+                            </p>
+                          )}
+                        </div>
 
                         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/35">
                           <span className="flex items-center gap-1">
                             <Clock size={12} />
                             {formatTime(loc.shared_at)}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Crosshair size={12} />
-                            {loc.latitude.toFixed(6)}, {loc.longitude.toFixed(6)}
                           </span>
                           {loc.accuracy && (
                             <span>±{Math.round(loc.accuracy)}m accuracy</span>

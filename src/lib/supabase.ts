@@ -34,6 +34,12 @@ export type LocationShare = {
   longitude: number;
   accuracy: number | null;
   address: string | null;
+  street: string | null;
+  area: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  postcode: string | null;
   device: string | null;
   browser: string | null;
   status: string;
