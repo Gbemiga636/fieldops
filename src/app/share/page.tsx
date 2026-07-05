@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import AnimatedBackground from "@/components/AnimatedBackground";
 import Logo from "@/components/Logo";
+import BackToHome from "@/components/BackToHome";
 import {
   getDeviceInfo,
   getBrowserInfo,
@@ -68,8 +69,9 @@ export default function ShareLocationPage() {
       setSavedName(name);
 
       const { latitude, longitude, accuracy } = position.coords;
-      const address = await reverseGeocode(latitude, longitude);
+      const coordFallback = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
 
+      // Post immediately — don't wait for address lookup
       const res = await fetch("/api/locations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -78,7 +80,7 @@ export default function ShareLocationPage() {
           latitude,
           longitude,
           accuracy,
-          address,
+          address: coordFallback,
           device: getDeviceInfo(),
           browser: getBrowserInfo(),
           status: "active",
@@ -94,11 +96,21 @@ export default function ShareLocationPage() {
         lat: latitude,
         lng: longitude,
         accuracy,
-        address,
+        address: coordFallback,
         time: new Date().toLocaleString(),
       });
       setSuccess(true);
       setError("");
+
+      // Resolve address in background (non-blocking)
+      reverseGeocode(latitude, longitude).then((address) => {
+        if (address !== coordFallback) {
+          setLastShare((prev) =>
+            prev ? { ...prev, address } : prev
+          );
+        }
+      });
+
       return true;
     },
     [agentName, savedName]
@@ -189,26 +201,33 @@ export default function ShareLocationPage() {
 
   const progressLabel =
     gpsProgress?.phase === "searching"
-      ? "Searching for GPS satellites..."
+      ? "Getting your GPS fix..."
       : gpsProgress?.phase === "refining"
-        ? "Refining your position..."
-        : "GPS locked";
+        ? "Fine-tuning accuracy..."
+        : "Location locked";
 
   return (
     <div className="relative min-h-[100dvh] flex flex-col safe-bottom">
       <AnimatedBackground />
 
-      <header className="relative z-10 px-4 pt-safe px-safe py-4 max-w-lg mx-auto w-full shrink-0">
+      <header className="relative z-10 px-4 pt-safe py-4 max-w-lg mx-auto w-full shrink-0 flex items-center justify-between gap-3">
         <Logo size="sm" showTagline />
+        <BackToHome />
       </header>
 
       <main className="relative z-10 flex-1 flex flex-col px-4 pb-4 max-w-lg mx-auto w-full">
         <motion.div
           className="flex-1 flex flex-col"
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         >
-          <div className="glass-card rounded-3xl p-5 sm:p-8 flex-1 flex flex-col">
+          <motion.div
+            className="glass-card rounded-3xl p-5 sm:p-8 flex-1 flex flex-col"
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.1, duration: 0.45 }}
+          >
             <div className="text-center mb-6">
               <motion.div
                 className="w-[4.5rem] h-[4.5rem] sm:w-20 sm:h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-mc-blue/20 to-mc-cyan/20 flex items-center justify-center border border-white/10"
@@ -362,7 +381,7 @@ export default function ShareLocationPage() {
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
 
           {/* Sticky mobile action bar */}
           <div className="sticky bottom-0 pt-4 pb-safe space-y-3 bg-gradient-to-t from-mc-navy via-mc-navy/95 to-transparent -mx-4 px-4">
@@ -374,7 +393,7 @@ export default function ShareLocationPage() {
               {sharing && !isWatching ? (
                 <>
                   <Loader2 size={22} className="animate-spin" />
-                  Acquiring GPS...
+                  Getting location...
                 </>
               ) : (
                 <>

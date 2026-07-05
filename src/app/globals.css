@@ -60,6 +60,37 @@ body {
   font-size: 16px;
 }
 
+/* Admin search bar */
+.search-input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.875rem 1rem 0.875rem 2.75rem;
+  font-size: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  color: #f0f4f8;
+  outline: none;
+  transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.search-input::placeholder {
+  color: rgba(240, 244, 248, 0.38);
+}
+
+.search-input:focus {
+  border-color: rgba(0, 163, 224, 0.55);
+  box-shadow: 0 0 0 3px rgba(0, 163, 224, 0.12);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Hide native search clear on some browsers for cleaner look */
+.search-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+
 .touch-manipulation {
   touch-action: manipulation;
 }
@@ -306,4 +337,37 @@ body {
 
 .animate-glow {
   animation: glow-pulse 3s ease-in-out infinite;
+}
+
+/* Smooth page & card interactions */
+.page-enter {
+  animation: page-fade-in 0.5s ease-out;
+}
+
+@keyframes page-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.card-hover {
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.25s ease;
+}
+
+.card-hover:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(0, 163, 224, 0.08);
+}
+
+.glass-card {
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* Smoother all transitions */
+a, button, input, select {
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }

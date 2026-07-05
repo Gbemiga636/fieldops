@@ -15,7 +15,6 @@ import {
   Users,
   MapPin,
   Clock,
-  LogOut,
   RefreshCw,
   X,
   ChevronDown,
@@ -27,6 +26,7 @@ import {
 import Logo from "@/components/Logo";
 import AnimatedBackground from "@/components/AnimatedBackground";
 import PasswordSetupModal from "@/components/PasswordSetupModal";
+import AdminHeader from "@/components/AdminHeader";
 import { supabase, type LocationShare } from "@/lib/supabase";
 
 const MapView = dynamic(() => import("@/components/MapView"), {
@@ -206,37 +206,38 @@ function DashboardContent() {
         onPasswordSet={() => setShowPasswordModal(false)}
       />
 
-      {/* Header */}
-      <header className="relative z-10 border-b border-white/5 glass sticky top-0">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-          <Logo size="sm" />
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-white/50 hidden sm:block">
-              Welcome, <span className="text-white font-medium">{username}</span>
-            </span>
-            <button onClick={handleLogout} className="btn-ghost text-sm py-2 px-3">
-              <LogOut size={16} />
-              <span className="hidden sm:inline">Logout</span>
-            </button>
-          </div>
-        </div>
-      </header>
+      <AdminHeader
+        username={username}
+        onLogout={handleLogout}
+        liveCount={stats.active}
+      />
 
       <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6">
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <motion.div
+          className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: {},
+            visible: { transition: { staggerChildren: 0.08 } },
+          }}
+        >
           {[
             { label: "Total Shares", value: stats.total, icon: MapPin, color: "from-blue-500 to-cyan-500" },
             { label: "Today", value: stats.today, icon: Clock, color: "from-emerald-500 to-teal-500" },
             { label: "Unique Agents", value: stats.agents, icon: Users, color: "from-violet-500 to-purple-500" },
             { label: "Active Now", value: stats.active, icon: Navigation, color: "from-orange-500 to-amber-500" },
-          ].map((stat, i) => (
+          ].map((stat) => (
             <motion.div
               key={stat.label}
-              className="glass-card rounded-2xl p-5"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
+              className="glass-card rounded-2xl p-5 card-hover"
+              variants={{
+                hidden: { opacity: 0, y: 24 },
+                visible: { opacity: 1, y: 0 },
+              }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              whileHover={{ y: -4, transition: { duration: 0.2 } }}
             >
               <div className="flex items-center justify-between mb-3">
                 <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center opacity-80`}>
@@ -247,29 +248,38 @@ function DashboardContent() {
               <p className="text-xs text-white/40 mt-0.5">{stat.label}</p>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         {/* Toolbar */}
-        <div className="glass-card rounded-2xl p-4 mb-6">
-          <div className="flex flex-col lg:flex-row gap-3">
-            <div className="relative flex-1">
+        <motion.div
+          className="glass-card rounded-2xl p-3 sm:p-4 mb-6"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.4 }}
+        >
+          <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+            {/* Search — full width on mobile */}
+            <div className="relative w-full lg:flex-1 lg:min-w-0">
               <Search
                 size={18}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30"
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-mc-cyan/60 pointer-events-none"
               />
               <input
-                type="text"
+                type="search"
+                inputMode="search"
+                enterKeyHint="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="field-input pl-10"
-                placeholder="Search by agent name or location..."
+                className="search-input w-full"
+                placeholder="Search agents or locations..."
               />
             </div>
 
-            <div className="flex gap-2 flex-wrap">
+            {/* Actions */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:flex lg:flex-nowrap gap-2 shrink-0">
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className={`btn-ghost text-sm ${showFilters ? "bg-white/10" : ""}`}
+                className={`btn-ghost text-xs sm:text-sm min-h-[44px] justify-center ${showFilters ? "bg-white/10 border-mc-cyan/30" : ""}`}
               >
                 <Filter size={16} />
                 Filters
@@ -278,35 +288,47 @@ function DashboardContent() {
                 )}
               </button>
 
-              <button onClick={fetchLocations} className="btn-ghost text-sm">
+              <button
+                onClick={fetchLocations}
+                className="btn-ghost text-xs sm:text-sm min-h-[44px] justify-center"
+                aria-label="Refresh"
+              >
                 <RefreshCw size={16} />
+                <span className="lg:hidden">Refresh</span>
               </button>
 
-              <button onClick={handleExport} className="btn-ghost text-sm">
+              <button
+                onClick={handleExport}
+                className="btn-ghost text-xs sm:text-sm min-h-[44px] justify-center"
+              >
                 <Download size={16} />
-                Export
+                <span className="lg:hidden">Export</span>
               </button>
 
-              <div className="flex rounded-xl overflow-hidden border border-white/10">
+              <div className="flex rounded-xl overflow-hidden border border-white/10 min-h-[44px] col-span-2 sm:col-span-1">
                 <button
                   onClick={() => setViewMode("list")}
-                  className={`px-3 py-2 text-sm flex items-center gap-1.5 transition-colors ${
+                  className={`flex-1 px-3 py-2.5 text-sm flex items-center justify-center gap-1.5 transition-colors ${
                     viewMode === "list"
                       ? "bg-white/10 text-white"
                       : "text-white/50 hover:text-white"
                   }`}
+                  aria-label="List view"
                 >
                   <List size={16} />
+                  <span className="lg:hidden text-xs">List</span>
                 </button>
                 <button
                   onClick={() => setViewMode("map")}
-                  className={`px-3 py-2 text-sm flex items-center gap-1.5 transition-colors ${
+                  className={`flex-1 px-3 py-2.5 text-sm flex items-center justify-center gap-1.5 transition-colors ${
                     viewMode === "map"
                       ? "bg-white/10 text-white"
                       : "text-white/50 hover:text-white"
                   }`}
+                  aria-label="Map view"
                 >
                   <Map size={16} />
+                  <span className="lg:hidden text-xs">Map</span>
                 </button>
               </div>
             </div>
@@ -368,15 +390,28 @@ function DashboardContent() {
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
+        </motion.div>
 
         {/* Content */}
+        <AnimatePresence mode="wait">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
+          <motion.div
+            key="loading"
+            className="flex items-center justify-center py-20"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
             <RefreshCw className="animate-spin text-mc-cyan" size={32} />
-          </div>
+          </motion.div>
         ) : locations.length === 0 ? (
-          <div className="glass-card rounded-2xl p-12 text-center">
+          <motion.div
+            key="empty"
+            className="glass-card rounded-2xl p-12 text-center"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+          >
             <MapPin size={48} className="mx-auto text-white/20 mb-4" />
             <h3 className="text-lg font-semibold text-white/60 mb-2">
               No location shares yet
@@ -384,17 +419,29 @@ function DashboardContent() {
             <p className="text-sm text-white/30">
               Share the agent link with your field team to start receiving locations
             </p>
-          </div>
+          </motion.div>
         ) : viewMode === "map" ? (
-          <div className="glass-card rounded-2xl p-2 h-[500px]">
+          <motion.div
+            key="map"
+            className="glass-card rounded-2xl p-2 h-[500px]"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+          >
             <MapView
               locations={locations}
               selectedId={selectedId}
               onSelect={setSelectedId}
             />
-          </div>
+          </motion.div>
         ) : (
-          <div className="space-y-3">
+          <motion.div
+            key="list"
+            className="space-y-3"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
             {locations.map((loc, i) => {
               const isRecent =
                 Date.now() - new Date(loc.shared_at).getTime() < 30 * 60 * 1000;
@@ -402,12 +449,16 @@ function DashboardContent() {
               return (
                 <motion.div
                   key={loc.id}
-                  className={`glass-card rounded-2xl p-5 transition-all hover:border-white/20 ${
+                  layout
+                  className={`glass-card rounded-2xl p-5 card-hover cursor-pointer ${
                     selectedId === loc.id ? "ring-1 ring-mc-cyan/50" : ""
                   }`}
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: Math.min(i * 0.03, 0.5) }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  transition={{ delay: Math.min(i * 0.04, 0.4), duration: 0.35 }}
+                  whileHover={{ scale: 1.005 }}
+                  whileTap={{ scale: 0.995 }}
                   onClick={() => setSelectedId(loc.id)}
                 >
                   <div className="flex flex-col lg:flex-row lg:items-center gap-4">
@@ -484,8 +535,9 @@ function DashboardContent() {
                 </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
       </main>
     </div>
   );

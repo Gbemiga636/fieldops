@@ -24,9 +24,12 @@ export function getBrowserInfo(): string {
 
 export async function reverseGeocode(
   lat: number,
-  lng: number
+  lng: number,
+  timeoutMs = 3500
 ): Promise<string> {
-  try {
+  const fallback = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+  const fetchAddress = async (): Promise<string> => {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
       { headers: { "User-Agent": "FieldOps/1.0" } }
@@ -47,9 +50,17 @@ export async function reverseGeocode(
       ].filter(Boolean);
       if (parts.length) return parts.join(", ");
     }
+    return fallback;
+  };
 
-    return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+  try {
+    return await Promise.race([
+      fetchAddress(),
+      new Promise<string>((resolve) =>
+        setTimeout(() => resolve(fallback), timeoutMs)
+      ),
+    ]);
   } catch {
-    return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    return fallback;
   }
 }

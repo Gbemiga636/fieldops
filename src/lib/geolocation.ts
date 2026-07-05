@@ -1,7 +1,13 @@
-const GEO_OPTIONS: PositionOptions = {
+const FAST_OPTIONS: PositionOptions = {
+  enableHighAccuracy: true,
+  maximumAge: 5000,
+  timeout: 8000,
+};
+
+const REFINE_OPTIONS: PositionOptions = {
   enableHighAccuracy: true,
   maximumAge: 0,
-  timeout: 30000,
+  timeout: 5000,
 };
 
 export type GeoErrorCode =
@@ -38,6 +44,28 @@ function toGeoError(err: GeolocationPositionError): GeoErrorCode {
   }
 }
 
+function getCurrentPosition(
+  options: PositionOptions
+): Promise<GeolocationPosition> {
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, (err) =>
+      reject(new Error(toGeoError(err)))
+    , options);
+  });
+}
+
+function isValidReading(position: GeolocationPosition): boolean {
+  const { accuracy } = position.coords;
+  return accuracy > 0 && accuracy < 500;
+}
+
+function pickBest(
+  a: GeolocationPosition,
+  b: GeolocationPosition
+): GeolocationPosition {
+  return a.coords.accuracy <= b.coords.accuracy ? a : b;
+}
+
 /** Haversine distance in metres between two coordinates */
 export function distanceMetres(
   lat1: number,
@@ -62,8 +90,8 @@ export type AcquireProgress = {
 };
 
 /**
- * Collect multiple GPS readings and return the most accurate one.
- * Mobile GPS often improves over several seconds — this waits for the best fix.
+ * Fast GPS: get a fix quickly, optionally refine once if accuracy is poor.
+ * Typically completes in 1–4 seconds instead of 15–28.
  */
 export function acquireBestPosition(
   onProgress?: (progress: AcquireProgress) => void
@@ -74,98 +102,54 @@ export function acquireBestPosition(
       return;
     }
 
-    const samples: GeolocationPosition[] = [];
-    const maxSamples = 6;
-    const maxWaitMs = 28000;
-    const goodAccuracyM = 15;
-    let watchId: number | null = null;
     let settled = false;
-
-    const cleanup = () => {
-      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-      clearTimeout(timer);
-    };
-
-    const finish = () => {
+    const finish = (position: GeolocationPosition) => {
       if (settled) return;
       settled = true;
-      cleanup();
-
-      if (samples.length === 0) {
-        reject(new Error("UNAVAILABLE"));
-        return;
-      }
-
-      const best = samples.reduce((a, b) =>
-        a.coords.accuracy <= b.coords.accuracy ? a : b
-      );
-      resolve(best);
-    };
-
-    const report = (phase: AcquireProgress["phase"]) => {
-      const best = samples.length
-        ? samples.reduce((a, b) =>
-            a.coords.accuracy <= b.coords.accuracy ? a : b
-          )
-        : null;
       onProgress?.({
-        samples: samples.length,
-        bestAccuracy: best?.coords.accuracy ?? null,
-        phase,
+        samples: 1,
+        bestAccuracy: position.coords.accuracy,
+        phase: "locked",
       });
+      resolve(position);
     };
 
-    report("searching");
+    onProgress?.({ samples: 0, bestAccuracy: null, phase: "searching" });
 
-    watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        if (settled) return;
-
-        const { accuracy } = position.coords;
-        if (accuracy > 0 && accuracy < 500) {
-          samples.push(position);
+    getCurrentPosition(FAST_OPTIONS)
+      .then(async (first) => {
+        if (!isValidReading(first)) {
+          throw new Error("UNAVAILABLE");
         }
 
-        report(samples.length < 2 ? "searching" : "refining");
+        onProgress?.({
+          samples: 1,
+          bestAccuracy: first.coords.accuracy,
+          phase: first.coords.accuracy <= 35 ? "locked" : "refining",
+        });
 
-        const best = samples.reduce((a, b) =>
-          a.coords.accuracy <= b.coords.accuracy ? a : b
-        );
-
-        if (
-          best.coords.accuracy <= goodAccuracyM &&
-          samples.length >= 2
-        ) {
-          report("locked");
-          settled = true;
-          cleanup();
-          resolve(best);
-        } else if (samples.length >= maxSamples) {
-          finish();
+        // Good enough — ship immediately
+        if (first.coords.accuracy <= 35) {
+          finish(first);
+          return;
         }
-      },
-      (err) => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        reject(new Error(toGeoError(err)));
-      },
-      GEO_OPTIONS
-    );
 
-    const timer = setTimeout(finish, maxWaitMs);
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        if (settled) return;
-        if (position.coords.accuracy > 0 && position.coords.accuracy < 500) {
-          samples.push(position);
-          report("refining");
+        // One quick refinement attempt (max 3s extra)
+        try {
+          const refined = await getCurrentPosition(REFINE_OPTIONS);
+          if (isValidReading(refined)) {
+            finish(pickBest(first, refined));
+          } else {
+            finish(first);
+          }
+        } catch {
+          finish(first);
         }
-      },
-      () => {},
-      GEO_OPTIONS
-    );
+      })
+      .catch((err) => {
+        if (settled) return;
+        reject(err instanceof Error ? err : new Error("UNAVAILABLE"));
+      });
   });
 }
 
@@ -176,12 +160,12 @@ export type LiveTrackerOptions = {
   minDistanceM?: number;
 };
 
-/** Live tracking with debounce — only fires when moved or accuracy improves */
+/** Live tracking — only fires when moved or accuracy improves */
 export function startLiveTracker(options: LiveTrackerOptions): () => void {
   const {
     onPosition,
     onError,
-    minIntervalMs = 15000,
+    minIntervalMs = 12000,
     minDistanceM = 8,
   } = options;
 
@@ -214,7 +198,7 @@ export function startLiveTracker(options: LiveTrackerOptions): () => void {
       onPosition(position);
     },
     (err) => onError(toGeoError(err)),
-    GEO_OPTIONS
+    FAST_OPTIONS
   );
 
   return () => navigator.geolocation.clearWatch(watchId);

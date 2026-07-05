@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { User, Lock, Eye, EyeOff, LogIn, Loader2 } from "lucide-react";
 import AnimatedBackground from "@/components/AnimatedBackground";
 import Logo from "@/components/Logo";
-import Link from "next/link";
+import BackToHome from "@/components/BackToHome";
+import LoadingOverlay from "@/components/LoadingOverlay";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -15,11 +17,13 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [needsPassword, setNeedsPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("Signing in...");
   const [error, setError] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setLoadingMessage("Signing in...");
     setLoading(true);
 
     try {
@@ -38,6 +42,8 @@ export default function AdminLoginPage() {
         throw new Error(data.error || "Login failed");
       }
 
+      setLoadingMessage("Opening dashboard...");
+
       if (data.needsPasswordSetup) {
         router.push("/admin/dashboard?setup=password");
       } else {
@@ -45,7 +51,6 @@ export default function AdminLoginPage() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
-    } finally {
       setLoading(false);
     }
   };
@@ -53,6 +58,7 @@ export default function AdminLoginPage() {
   const handleUsernameSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setLoadingMessage("Verifying account...");
     setLoading(true);
 
     try {
@@ -69,38 +75,52 @@ export default function AdminLoginPage() {
       }
 
       if (data.needsPasswordSetup) {
+        setLoadingMessage("Opening dashboard...");
         router.push("/admin/dashboard?setup=password");
       } else {
+        setLoading(false);
         setNeedsPassword(true);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
-    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col">
+    <div className="relative min-h-[100dvh] flex flex-col">
+      <LoadingOverlay show={loading} message={loadingMessage} />
       <AnimatedBackground />
 
-      <header className="relative z-10 px-6 py-5 max-w-md mx-auto w-full">
-        <Link href="/">
+      <header className="relative z-10 px-4 sm:px-6 py-4 max-w-md mx-auto w-full flex items-center justify-between gap-3">
+        <Link href="/" className="transition-opacity hover:opacity-80">
           <Logo size="sm" />
         </Link>
+        <BackToHome />
       </header>
 
-      <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-8">
+      <main className="relative z-10 flex-1 flex items-center justify-center px-4 sm:px-6 py-8">
         <motion.div
           className="w-full max-w-md"
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         >
-          <div className="glass-card rounded-3xl p-8">
+          <motion.div
+            className="glass-card rounded-3xl p-6 sm:p-8"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.1, duration: 0.45 }}
+          >
             <div className="text-center mb-8">
-              <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-mc-blue to-mc-cyan flex items-center justify-center">
+              <motion.div
+                className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-mc-blue to-mc-cyan flex items-center justify-center shadow-lg shadow-cyan-500/25"
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.2, type: "spring", stiffness: 300 }}
+              >
                 <LogIn size={24} className="text-white" />
-              </div>
+              </motion.div>
               <h2 className="text-2xl font-bold text-white mb-1">
                 Admin Login
               </h2>
@@ -113,7 +133,11 @@ export default function AdminLoginPage() {
               onSubmit={needsPassword ? handleLogin : handleUsernameSubmit}
               className="space-y-5"
             >
-              <div>
+              <motion.div
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.25 }}
+              >
                 <label className="flex items-center gap-2 text-sm font-medium text-white/70 mb-2">
                   <User size={16} />
                   Username
@@ -122,17 +146,18 @@ export default function AdminLoginPage() {
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="field-input"
+                  className="field-input field-input-mobile"
                   placeholder="Enter username"
                   required
-                  disabled={needsPassword}
+                  disabled={needsPassword || loading}
                 />
-              </div>
+              </motion.div>
 
               {needsPassword && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
+                  transition={{ duration: 0.3 }}
                 >
                   <label className="flex items-center gap-2 text-sm font-medium text-white/70 mb-2">
                     <Lock size={16} />
@@ -143,10 +168,11 @@ export default function AdminLoginPage() {
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="field-input pr-10"
+                      className="field-input field-input-mobile pr-10"
                       placeholder="Enter your password"
                       required
                       autoFocus
+                      disabled={loading}
                     />
                     <button
                       type="button"
@@ -166,17 +192,18 @@ export default function AdminLoginPage() {
               {error && (
                 <motion.p
                   className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
                 >
                   {error}
                 </motion.p>
               )}
 
-              <button
+              <motion.button
                 type="submit"
                 disabled={loading}
-                className="btn-primary w-full py-3.5"
+                className="btn-primary w-full py-3.5 min-h-[48px] touch-manipulation"
+                whileTap={{ scale: 0.98 }}
               >
                 {loading ? (
                   <>
@@ -188,7 +215,7 @@ export default function AdminLoginPage() {
                 ) : (
                   "Continue"
                 )}
-              </button>
+              </motion.button>
 
               {needsPassword && (
                 <button
@@ -204,7 +231,7 @@ export default function AdminLoginPage() {
                 </button>
               )}
             </form>
-          </div>
+          </motion.div>
         </motion.div>
       </main>
     </div>
